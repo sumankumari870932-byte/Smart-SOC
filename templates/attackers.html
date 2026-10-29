@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top Attackers</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI, sans-serif;
+}
+
+body{
+background:linear-gradient(135deg,#eef2ff,#e0f2fe);
+color:#1e293b;
+min-height:100vh;
+}
+
+.navbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:15px 25px;
+background:#334155;
+box-shadow:0 2px 10px rgba(0,0,0,0.05);
+flex-wrap:wrap;
+width:100%;
+gap:10px;
+}
+
+.title{
+font-size:44px;
+font-weight:bold;
+color:#2563eb;
+text-align:center;
+flex:1;
+margin-left: -200px;
+}
+
+.navlinks{
+display:flex;
+flex-wrap:wrap;
+gap:40px;
+width:100%;
+justify-content:center;
+margin-top:10px;   /* ❗ not 80px */
+}
+
+
+.navlinks a{
+text-decoration:none;
+color:#f2f4f6;
+font-size:14px;
+font-weight:500;
+
+}
+
+.navlinks a:hover{
+color:#2563eb;
+}
+
+.main{
+max-width:1100px;
+margin:auto;
+padding:30px;
+}
+
+h1{
+margin-bottom:20px;
+}
+
+.table-wrapper{
+overflow-x:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+border-radius:10px;
+min-width:500px;
+}
+
+th,td{
+padding:14px;
+border-bottom:1px solid #e2e8f0;
+text-align:left;
+font-size:14px;
+}
+
+th{
+background:#eff6ff;
+color:#2563eb;
+}
+
+.ip{
+font-weight:bold;
+color:#1d4ed8;
+}
+
+footer{
+margin-top:40px;
+padding:20px;
+text-align:center;
+background:white;
+border-top:1px solid #e2e8f0;
+}
+
+@media(max-width:600px){
+.main{
+padding:20px;
+}
+}
+.navlinks a.active {
+  color: #00f2ff;
+  border-bottom: 2px solid #00f2ff;
+  box-shadow: 0 0 10px #00f2ff;
+}
+.logo-img{
+width:160px;
+height:160px;
+object-fit:contain;
+transform:translateY(25px);
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="navbar">
+<div class="nav-left">
+<img src="/static/SOC_Logo.png" class="logo-img">
+</div>
+<div class="title">Top Attackers</div>
+
+<div class="navlinks">
+<a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+
+<a href="{% url 'logs' %}" class="{% if request.resolver_match.url_name == 'logs' %}active{% endif %}">Attack Logs</a>
+
+<a href="{% url 'monitor' %}" class="{% if request.resolver_match.url_name == 'monitor' %}active{% endif %}">Monitor</a>
+
+<a href="{% url 'attackers' %}" class="{% if request.resolver_match.url_name == 'attackers' %}active{% endif %}">Attackers</a>
+
+<a href="{% url 'analysis' %}" class="{% if request.resolver_match.url_name == 'analysis' %}active{% endif %}">Analysis</a>
+
+<a href="{% url 'settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">Settings</a>
+</div>
+
+</header>
+
+<div class="main">
+
+<h1>Most Active Attackers</h1>
+
+<div class="table-wrapper">
+
+<table>
+
+<tr>
+<th>IP Address</th>
+<th>Country</th>
+<th>Total Attacks</th>
+<th>Last Activity</th>
+</tr>
+
+{% for attacker in attackers %}
+<tr>
+<td class="ip">{{ attacker.ip_address }}</td>
+<td>India</td>
+<td>{{ attacker.total_attacks }}</td>
+<td>{{ attacker.last_activity|date:"d M Y, h:i A" }}</td>
+</tr>
+{% empty %}
+<tr>
+<td colspan="4">No attackers found</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</div>
+
+<footer>
+© 2026 Smart SOC
+</footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif;}
+body{background:linear-gradient(135deg,#eef2ff,#e0f2fe);color:#1e293b;min-height:100vh;}
+.bar{background:#334155;padding:18px 25px;display:flex;align-items:center;gap:20px;}
+.bar a{color:#e0f2fe;text-decoration:none;font-weight:500;}
+.bar a:hover{color:#00f2ff;}
+.bar h1{color:#2563eb;font-size:28px;margin-left:auto;}
+.main{max-width:1200px;margin:auto;padding:30px;}
+.main h2{font-size:26px;}
+.count{margin-top:6px;color:#475569;}
+.table-wrapper{overflow-x:auto;margin-top:20px;}
+table{width:100%;border-collapse:collapse;background:white;border-radius:10px;min-width:900px;}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:14px;}
+th{background:#eff6ff;color:#2563eb;}
+tr:hover{background:#f1f5f9;}
+.danger{color:#dc2626;font-weight:bold;}
+.warning{color:#f59e0b;font-weight:bold;}
+.prio{padding:3px 10px;border-radius:6px;font-weight:bold;font-size:12px;display:inline-block;}
+.prio-low{background:#d1fae5;color:#065f46;}
+.prio-medium{background:#fef3c7;color:#92400e;}
+.prio-high{background:#fed7aa;color:#9a3412;}
+.prio-critical{background:#fecaca;color:#991b1b;}
+</style>
+</head>
+<body>
+
+<div class="bar">
+<a href="{% url 'dashboard' %}">&larr; Back to Dashboard</a>
+<h1>Smart SOC</h1>
+</div>
+
+<div class="main">
+<h2>{{ title }}</h2>
+<p class="count">{{ count }} record{{ count|pluralize }} found</p>
+
+<div class="table-wrapper">
+<table>
+<tr>
+<th>IP Address</th>
+<th>Attack Type</th>
+<th>ML Label</th>
+<th>Confidence</th>
+<th>Risk</th>
+<th>Priority</th>
+<th>Username</th>
+<th>Payload</th>
+<th>Time</th>
+<th>Status</th>
+</tr>
+{% for attack in attacks %}
+<tr>
+<td>{{ attack.ip_address }}</td>
+<td>{{ attack.attack_type }}</td>
+<td>{{ attack.ml_label }}</td>
+<td>{{ attack.confidence|floatformat:2 }}</td>
+<td>{{ attack.risk_score|floatformat:1 }}</td>
+<td>{% if attack.priority %}<span class="prio prio-{{ attack.priority|lower }}">{{ attack.priority }}</span>{% endif %}</td>
+<td>{{ attack.username }}</td>
+<td>{{ attack.payload|truncatechars:50 }}</td>
+<td>{{ attack.time|date:"d M Y, h:i A" }}</td>
+<td class="{% if attack.status == 'Blocked' %}danger{% else %}warning{% endif %}">{{ attack.status }}</td>
+</tr>
+{% empty %}
+<tr><td colspan="10">No records found.</td></tr>
+{% endfor %}
+</table>
+</div>
+</div>
+
+</body>
+</html>

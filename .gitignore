@@ -1,0 +1,8 @@
+.env
+db.sqlite3
+check_telegram.py
+venv/
+__pycache__/
+*.pyc
+.vscode/
+.cursor/

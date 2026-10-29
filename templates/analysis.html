@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attack Analysis</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI, sans-serif;
+}
+
+body{
+background:linear-gradient(135deg,#eef2ff,#e0f2fe);
+color:#1e293b;
+min-height:100vh;
+}
+
+.navbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:15px 25px;
+background:#334155;
+box-shadow:0 2px 10px rgba(0,0,0,0.05);
+flex-wrap:wrap;
+width:100%;
+gap:10px;
+}
+
+.title{
+font-size:44px;
+font-weight:bold;
+color:#2563eb;
+text-align:center;
+flex:1;
+margin-left: -200px;
+}
+
+.navlinks{
+display:flex;
+flex-wrap:wrap;
+gap:40px;
+width:100%;
+justify-content:center;
+margin-top:10px;   /* ❗ not 80px */
+}
+
+
+.navlinks a{
+text-decoration:none;
+color:#f3f5f7;
+font-size:14px;
+font-weight:500;
+
+}
+
+.navlinks a:hover{
+color:#2563eb;
+}
+.logo-img{
+width:160px;
+height:160px;
+object-fit:contain;
+transform:translateY(25px);
+}
+.main{
+max-width:1100px;
+margin:auto;
+padding:30px;
+}
+
+h1{
+margin-bottom:20px;
+}
+
+.chart-box{
+background:white;
+padding:25px;
+border-radius:10px;
+margin-top:20px;
+box-shadow:0 4px 15px rgba(0,0,0,0.05);
+}
+
+footer{
+margin-top:40px;
+padding:20px;
+text-align:center;
+background:white;
+border-top:1px solid #e2e8f0;
+}
+
+@media(max-width:600px){
+.main{
+padding:20px;
+}
+}
+.navlinks a.active {
+  color: #00f2ff;
+  border-bottom: 2px solid #00f2ff;
+  box-shadow: 0 0 10px #00f2ff;
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="navbar">
+<div class="nav-left">
+<img src="/static/SOC_Logo.png" class="logo-img">
+</div>
+<div class="title">Attack Analysis</div>
+
+<div class="navlinks">
+<a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+
+<a href="{% url 'logs' %}" class="{% if request.resolver_match.url_name == 'logs' %}active{% endif %}">Logs</a>
+
+<a href="{% url 'monitor' %}" class="{% if request.resolver_match.url_name == 'monitor' %}active{% endif %}">Monitor</a>
+
+<a href="{% url 'attackers' %}" class="{% if request.resolver_match.url_name == 'attackers' %}active{% endif %}">Attackers</a>
+
+<a href="{% url 'analysis' %}" class="{% if request.resolver_match.url_name == 'analysis' %}active{% endif %}">Analysis</a>
+
+<a href="{% url 'settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">Settings</a>
+</div>
+</header>
+
+<div class="main">
+
+<h1>Attack Analysis Dashboard</h1>
+
+<div class="chart-box">
+<canvas id="attackChart"></canvas>
+</div>
+
+<div class="chart-box">
+<canvas id="dailyChart"></canvas>
+</div>
+
+<footer>
+© 2026 Smart SOC
+</footer>
+
+</div>
+
+<script>
+
+/* PIE CHART (Attack Types) */
+
+const attackChart = document.getElementById('attackChart');
+
+new Chart(attackChart,{
+type:'pie',
+data:{
+labels:['SQL Injection','XSS','Brute Force','Command Injection'],
+datasets:[{
+data:[
+{{ sql_count }},
+{{ xss_count }},
+{{ brute_count }},
+{{ cmd_count }}
+],
+backgroundColor:[
+'#3b82f6',
+'#ef4444',
+'#f59e0b',
+'#10b981'
+]
+}]
+}
+});
+
+
+/* BAR CHART (Weekly Attacks) */
+
+const dailyChart = document.getElementById('dailyChart');
+
+new Chart(dailyChart,{
+type:'bar',
+data:{
+labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+datasets:[{
+label:'Attacks',
+data:[
+{{ mon }},
+{{ tue }},
+{{ wed }},
+{{ thu }},
+{{ fri }},
+{{ sat }},
+{{ sun }}
+],
+backgroundColor:'#2563eb'
+}]
+}
+});
+
+</script>
+
+</body>
+</html>

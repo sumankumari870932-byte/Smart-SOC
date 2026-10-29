@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Monitor</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI, sans-serif;
+}
+
+body{
+background:linear-gradient(135deg,#eef2ff,#e0f2fe);
+color:#1e293b;
+min-height:100vh;
+}
+
+.navbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:15px 25px;
+background:#334155;
+box-shadow:0 2px 10px rgba(0,0,0,0.05);
+flex-wrap:wrap;
+gap:10px;
+width:100%;
+}
+
+.title{
+font-size:44px;
+font-weight:bold;
+color:#2563eb;
+text-align:center;
+flex:1;
+margin-left: -200px;
+}
+
+.navlinks{
+display:flex;
+flex-wrap:wrap;
+gap:40px;
+width:100%;
+justify-content:center;
+margin-top:10px;
+}
+
+.navlinks a{
+text-decoration:none;
+color:#fcfdfe;
+font-size:14px;
+font-weight:500;
+}
+
+.navlinks a:hover{
+color:#2563eb;
+}
+
+.main{
+max-width:1200px;
+margin:auto;
+padding:30px;
+}
+
+h1{
+margin-bottom:10px;
+}
+
+.live{
+display:flex;
+align-items:center;
+gap:8px;
+margin-bottom:15px;
+font-size:14px;
+color:#475569;
+}
+
+.dot{
+width:10px;
+height:10px;
+border-radius:50%;
+background:#22c55e;
+animation:pulse 1.5s infinite;
+}
+
+.dot.off{
+background:#ef4444;
+animation:none;
+}
+
+@keyframes pulse{
+0%{box-shadow:0 0 0 0 rgba(34,197,94,0.7);}
+70%{box-shadow:0 0 0 8px rgba(34,197,94,0);}
+100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}
+}
+
+.terminal{
+background:#0f172a;
+color:#22c55e;
+padding:20px;
+border-radius:10px;
+height:400px;
+overflow-y:auto;
+font-family:monospace;
+box-shadow:0 8px 20px rgba(0,0,0,0.1);
+}
+
+.log{
+margin-bottom:8px;
+font-size:14px;
+}
+
+.alert{
+color:#ef4444;
+font-weight:bold;
+}
+
+.payload{
+color:#facc15;
+}
+
+.ml{
+color:#93c5fd;
+}
+
+.sep{
+border-top:1px dashed #334155;
+margin:12px 0;
+}
+
+.prio{
+padding:1px 8px;
+border-radius:4px;
+font-weight:bold;
+font-size:12px;
+}
+
+.prio-low{background:#d1fae5;color:#065f46;}
+.prio-medium{background:#fef3c7;color:#92400e;}
+.prio-high{background:#fed7aa;color:#9a3412;}
+.prio-critical{background:#fecaca;color:#991b1b;}
+.prio-unknown{background:#e2e8f0;color:#475569;}
+
+.blocked{
+color:#ef4444;
+font-weight:bold;
+}
+
+footer{
+margin-top:40px;
+padding:20px;
+text-align:center;
+background:white;
+border-top:1px solid #e2e8f0;
+}
+
+@media(max-width:600px){
+.main{
+padding:20px;
+}
+.terminal{
+height:300px;
+font-size:12px;
+}
+}
+.navlinks a.active {
+  color: #00f2ff;
+  border-bottom: 2px solid #00f2ff;
+  box-shadow: 0 0 10px #00f2ff;
+}
+.logo-img{
+width:160px;
+height:160px;
+object-fit:contain;
+transform:translateY(25px);
+}
+</style>
+
+</head>
+
+<body>
+
+<header class="navbar">
+<div class="nav-left">
+<img src="/static/SOC_Logo.png" class="logo-img">
+</div>
+<div class="title">Live Attack Monitor</div>
+
+<div class="navlinks">
+<a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+
+<a href="{% url 'logs' %}" class="{% if request.resolver_match.url_name == 'logs' %}active{% endif %}">Attack Logs</a>
+
+<a href="{% url 'monitor' %}" class="{% if request.resolver_match.url_name == 'monitor' %}active{% endif %}">Monitor</a>
+
+<a href="{% url 'attackers' %}" class="{% if request.resolver_match.url_name == 'attackers' %}active{% endif %}">Attackers</a>
+
+<a href="{% url 'analysis' %}" class="{% if request.resolver_match.url_name == 'analysis' %}active{% endif %}">Analysis</a>
+
+<a href="{% url 'settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}">Settings</a>
+</div>
+
+</header>
+
+<div class="main">
+
+<h1>Real-Time Attack Monitoring</h1>
+
+<div class="live">
+<span class="dot" id="dot"></span>
+<span id="liveText">Connecting...</span>
+</div>
+
+<div class="terminal" id="terminal">
+Loading...
+</div>
+
+<footer>
+© 2026 Smart SOC
+</footer>
+
+</div>
+
+<script>
+
+const terminal = document.getElementById("terminal");
+const dot = document.getElementById("dot");
+const liveText = document.getElementById("liveText");
+const DATA_URL = "{% url 'monitor_data' %}";
+
+function makeLine(cls, text){
+    const d = document.createElement("div");
+    d.className = "log " + cls;
+    d.textContent = text;
+    return d;
+}
+
+async function refresh(){
+    try {
+        const res = await fetch(DATA_URL, {cache: "no-store"});
+        const data = await res.json();
+
+        const keepScroll = terminal.scrollTop;
+        terminal.replaceChildren();
+
+        if (data.attacks.length === 0) {
+            terminal.appendChild(makeLine("", "No attacks yet. Waiting for connections..."));
+        }
+
+        data.attacks.forEach(a => {
+            terminal.appendChild(makeLine("", "[" + a.time + "] Connection from " + a.ip));
+
+            const isNormal = (a.attack_type === "Normal");
+            terminal.appendChild(makeLine(
+                isNormal ? "" : "alert",
+                "[" + a.time + "] " + (isNormal ? "Normal login attempt" : a.attack_type + " detected")
+            ));
+
+            const ml = makeLine("ml", "ML: " + (a.ml_label || "-") + " | Risk " + a.risk + " | ");
+            const badge = document.createElement("span");
+            const prio = a.priority || "Unknown";
+            badge.className = "prio prio-" + prio.toLowerCase();
+            badge.textContent = prio;
+            ml.appendChild(badge);
+            ml.appendChild(document.createTextNode(" | "));
+            const st = document.createElement("span");
+            st.textContent = a.status;
+            if (a.status === "Blocked") { st.className = "blocked"; }
+            ml.appendChild(st);
+            terminal.appendChild(ml);
+
+            terminal.appendChild(makeLine("payload", "Payload → " + a.payload));
+
+            const sep = document.createElement("div");
+            sep.className = "sep";
+            terminal.appendChild(sep);
+        });
+
+        terminal.scrollTop = keepScroll;
+
+        dot.classList.remove("off");
+        liveText.textContent = "LIVE - updates every 1 seconds (last: " + new Date().toLocaleTimeString() + ")";
+    } catch (e) {
+        dot.classList.add("off");
+        liveText.textContent = "Connection lost - retrying...";
+    }
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+
+</body>
+</html>

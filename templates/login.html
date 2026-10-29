@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login</title>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI, sans-serif;
+}
+
+body{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:linear-gradient(135deg,#0f172a,#1e3a8a,#0ea5e9);
+background-size:300% 300%;
+animation:bgMove 8s ease infinite;
+}
+
+/* Background animation */
+@keyframes bgMove{
+0%{background-position:0% 50%;}
+50%{background-position:100% 50%;}
+100%{background-position:0% 50%;}
+}
+
+/* Glass effect */
+.login-box{
+background:rgba(255,255,255,0.1);
+backdrop-filter:blur(15px);
+-webkit-backdrop-filter:blur(15px);
+padding:35px;
+border-radius:15px;
+box-shadow:0 0 25px rgba(0,0,0,0.2);
+width:320px;
+text-align:center;
+border:1px solid rgba(255,255,255,0.2);
+transition:0.4s;
+}
+
+/* Glow on hover */
+.login-box:hover{
+transform:translateY(-5px) scale(1.02);
+box-shadow:0 0 30px #38bdf8, 0 0 60px rgba(56,189,248,0.5);
+}
+
+.login-box h2{
+margin-bottom:20px;
+color:#e0f2fe;
+letter-spacing:1px;
+}
+
+/* Inputs */
+.login-box input{
+width:100%;
+padding:12px;
+margin:10px 0;
+border:1px solid rgba(255,255,255,0.3);
+border-radius:8px;
+background:rgba(255,255,255,0.15);
+color:white;
+outline:none;
+transition:0.3s;
+}
+
+/* Input glow */
+.login-box input:focus{
+border-color:#38bdf8;
+box-shadow:0 0 10px #38bdf8;
+background:rgba(255,255,255,0.2);
+}
+
+/* Button */
+.login-box button{
+width:100%;
+padding:12px;
+background:linear-gradient(135deg,#38bdf8,#2563eb);
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+margin-top:10px;
+transition:0.3s;
+}
+
+/* Button hover glow */
+.login-box button:hover{
+transform:scale(1.05);
+box-shadow:0 0 15px #38bdf8, 0 0 30px #2563eb;
+}
+
+/* Text styles */
+.note{
+margin-top:15px;
+font-size:13px;
+color:#cbd5f5;
+}
+
+.warning{
+margin-top:10px;
+color:#f87171;
+font-size:14px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-box">
+
+<h2>Admin Login</h2>
+
+<form method="POST">
+{% csrf_token %}
+
+<input type="text" name="username" placeholder="Username" required>
+<input type="password" name="password" placeholder="Password" required>
+
+<button type="submit">Login</button>
+
+</form>
+
+{% if message %}
+<div class="warning">{{ message }}</div>
+{% else %}
+<div class="note">
+Secret data Only for admin</div>
+{% endif %}
+
+</div>
+
+</body>
+</html>

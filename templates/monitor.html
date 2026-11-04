@@ -370,6 +370,8 @@ if (typeof L === "undefined") {
     const map = L.map("map", {worldCopyJump: true, minZoom: 2}).setView([20, 0], 2);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
+                referrerPolicy: "origin",
+
         maxZoom: 19
     }).addTo(map);
 

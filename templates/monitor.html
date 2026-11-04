@@ -179,8 +179,59 @@ height:160px;
 object-fit:contain;
 transform:translateY(25px);
 }
+
+/* WORLD MAP */
+.map-card{
+margin-bottom:25px;
+}
+
+.map-card h2{
+font-size:22px;
+margin-bottom:10px;
+}
+
+#map{
+height:430px;
+border-radius:10px;
+box-shadow:0 8px 20px rgba(0,0,0,0.1);
+background:#0f172a;
+}
+
+.map-note{
+margin-top:8px;
+font-size:13px;
+color:#475569;
+}
+
+.attack-dot{
+width:16px;
+height:16px;
+border-radius:50%;
+background:#ef4444;
+border:2px solid #ffffff;
+animation:blinkRed 1.2s infinite;
+cursor:pointer;
+}
+
+@keyframes blinkRed{
+0%{box-shadow:0 0 0 0 rgba(239,68,68,0.9);opacity:1;}
+70%{box-shadow:0 0 0 20px rgba(239,68,68,0);opacity:0.55;}
+100%{box-shadow:0 0 0 0 rgba(239,68,68,0);opacity:1;}
+}
+
+.pop h3{
+font-size:15px;
+margin-bottom:4px;
+}
+
+.pop p{
+font-size:13px;
+margin:2px 0;
+}
 </style>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -210,6 +261,12 @@ transform:translateY(25px);
 <div class="main">
 
 <h1>Real-Time Attack Monitoring</h1>
+
+<div class="map-card">
+<h2>Attacker Locations (live)</h2>
+<div id="map"></div>
+<p class="map-note" id="mapNote">Loading map...</p>
+</div>
 
 <div class="live">
 <span class="dot" id="dot"></span>
@@ -293,6 +350,121 @@ async function refresh(){
 
 refresh();
 setInterval(refresh, 1000);
+</script>
+
+<script>
+
+/* WORLD MAP: attacker IP locations (red blinking dot, details on click) */
+if (typeof L === "undefined") {
+    document.getElementById("mapNote").textContent =
+        "Map failed to load (check your internet or the Leaflet CDN). The terminal below still works.";
+} else {
+    const GEO_URL = "{% url 'monitor_geo' %}";
+    const mapNote = document.getElementById("mapNote");
+
+    const map = L.map("map", {worldCopyJump: true, minZoom: 2}).setView([20, 0], 2);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        subdomains: "abcd",
+        maxZoom: 19
+    }).addTo(map);
+
+    const markers = {};      // ip -> marker
+    let firstFit = true;
+
+    const dotIcon = L.divIcon({
+        className: "",
+        html: '<div class="attack-dot"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+
+    function addLine(parent, label, value) {
+        const p = document.createElement("p");
+        const b = document.createElement("b");
+        b.textContent = label + ": ";
+        p.appendChild(b);
+        p.appendChild(document.createTextNode(value));
+        parent.appendChild(p);
+    }
+
+    /* The popup is built with the DOM (textContent), so no value can run as code */
+    function buildPopup(p) {
+        const box = document.createElement("div");
+        box.className = "pop";
+        const h = document.createElement("h3");
+        h.textContent = p.ip;
+        box.appendChild(h);
+
+        const place = [p.city, p.region, p.country].filter(Boolean).join(", ");
+        addLine(box, "Location", place || "Unknown");
+        addLine(box, "Lat / Lon", p.lat + ", " + p.lon);
+        if (p.isp) { addLine(box, "ISP", p.isp); }
+        addLine(box, "Attacks", String(p.count));
+        addLine(box, "Last attack", p.last_type + " (" + p.last_time + ")");
+        addLine(box, "ML / Risk", (p.ml_label || "-") + " / " + p.risk + " (" + (p.priority || "Unknown") + ")");
+        addLine(box, "Status", p.status);
+
+        const small = document.createElement("p");
+        small.style.color = "#64748b";
+        small.textContent = "Approximate location from the IP (behind a VPN or proxy, the VPN location is shown).";
+        box.appendChild(small);
+        return box;
+    }
+
+    async function refreshMap() {
+        try {
+            const res = await fetch(GEO_URL, {cache: "no-store"});
+            const data = await res.json();
+            const seen = {};
+
+            data.points.forEach(p => {
+                seen[p.ip] = true;
+                let m = markers[p.ip];
+                if (!m) {
+                    m = L.marker([p.lat, p.lon], {icon: dotIcon}).addTo(map);
+                    m.bindPopup(buildPopup(p));
+                    m.on("click", () => {
+                        map.flyTo([p.lat, p.lon], Math.max(map.getZoom(), 5), {duration: 1.2});
+                    });
+                    markers[p.ip] = m;
+                } else {
+                    m.setPopupContent(buildPopup(p));
+                }
+            });
+
+            /* remove dots for IPs that are no longer in the recent list */
+            Object.keys(markers).forEach(ip => {
+                if (!seen[ip]) {
+                    map.removeLayer(markers[ip]);
+                    delete markers[ip];
+                }
+            });
+
+            if (firstFit && data.points.length > 0) {
+                map.fitBounds(data.points.map(p => [p.lat, p.lon]), {maxZoom: 4, padding: [40, 40]});
+                firstFit = false;
+            }
+
+            let note;
+            if (data.points.length > 0) {
+                note = data.points.length + " attacker location(s) on the map.";
+            } else {
+                note = "No public attacker IP on the map yet.";
+            }
+            if (data.local_ips.length > 0) {
+                note += " Local/private IPs (cannot be placed on a map): " + data.local_ips.join(", ");
+            }
+            mapNote.textContent = note;
+        } catch (e) {
+            mapNote.textContent = "Could not load map data, retrying...";
+        }
+    }
+
+    refreshMap();
+    setInterval(refreshMap, 3000);
+}
+
 </script>
 
 </body>

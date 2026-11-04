@@ -9,6 +9,7 @@ from .utils import send_telegram_alert
 from django.utils.timezone import now, localtime
 from .features import build_features
 from .ml_engine import predict_event
+from .geo import lookup_ip, is_public_ip
 from datetime import datetime
 
 
@@ -154,6 +155,45 @@ def monitor_data(request):
         'status': a.status,
     } for a in attacks]
     return JsonResponse({'attacks': data})
+
+
+def monitor_geo(request):
+    # For the map: recent attacker IPs and their approximate location
+    recent = Attack.objects.order_by('-time')[:200]
+
+    by_ip = {}
+    for a in recent:  # newest first
+        info = by_ip.get(a.ip_address)
+        if info is None:
+            by_ip[a.ip_address] = {
+                'ip': a.ip_address,
+                'count': 1,
+                'last_type': a.attack_type,
+                'ml_label': a.ml_label,
+                'priority': a.priority,
+                'risk': round(a.risk_score, 1),
+                'status': a.status,
+                'last_time': localtime(a.time).strftime('%d %b %Y, %H:%M:%S'),
+            }
+        else:
+            info['count'] += 1
+
+    points = []
+    local_ips = []
+    fetch_budget = 5  # at most 5 new lookups per request, so the page never hangs
+
+    for ip, info in by_ip.items():
+        if not is_public_ip(ip):
+            local_ips.append(ip)
+            continue
+        geo, fetched = lookup_ip(ip, allow_fetch=fetch_budget > 0)
+        if fetched:
+            fetch_budget -= 1
+        if geo:
+            info.update(geo)
+            points.append(info)
+
+    return JsonResponse({'points': points, 'local_ips': local_ips})
 
 
 def attackers_view(request):

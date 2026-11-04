@@ -12,7 +12,7 @@ from .ml_engine import predict_event
 from datetime import datetime
 
 
-# ML label -> Attack Type (sirf ye do; baaki ML labels Attack Type me nahi aate)
+# ML label -> Attack Type (only these two; other ML labels do not become an Attack Type)
 ML_LABEL_TO_TYPE = {
     "brute_force": "Brute Force",
     "credential_stuffing": "Brute Force",
@@ -48,7 +48,7 @@ def dashboard(request):
     brute_count = Attack.objects.filter(attack_type='Brute Force').count()
     recent_attacks = Attack.objects.order_by('-time')[:5]
 
-    # ML wale naye numbers
+    # New ML numbers
     high_risk_count = Attack.objects.filter(priority__in=['High', 'Critical']).count()
     ml_attack_count = Attack.objects.exclude(ml_label__in=['', 'normal', 'unknown']).count()
 
@@ -66,8 +66,8 @@ def dashboard(request):
 
 
 def attack_list(request, category):
-    # Dashboard card par click karne par us category ka pura data dikhata hai.
-    # Filters bilkul dashboard() ke counts jaise hain, taaki numbers match karein.
+    # Clicking a dashboard card shows all data for that category.
+    # The filters match the counts in dashboard() exactly, so the numbers agree.
     attacks = Attack.objects.order_by('-time')
 
     if category == 'total':
@@ -98,7 +98,7 @@ def attack_list(request, category):
 
 
 def parse_search_date(text):
-    # Ye formats chalenge: 28 Oct 2026, 28 October 2026, 2026-10-28, 28-10-2026, 28/10/2026
+    # Supported formats: 28 Oct 2026, 28 October 2026, 2026-10-28, 28-10-2026, 28/10/2026
     for fmt in ("%d %b %Y", "%d %B %Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
         try:
             return datetime.strptime(text, fmt).date()
@@ -140,7 +140,7 @@ def monitor_view(request):
 
 
 def monitor_data(request):
-    # Live Monitor har 2 second me yahan se naya data mangta hai (page reload nahi hota)
+    # The Live Monitor requests fresh data from here every second (no page reload)
     attacks = Attack.objects.order_by('-time')[:20]
     data = [{
         'id': a.id,
@@ -236,7 +236,7 @@ def honeypot_login(request):
         ip = get_client_ip(request)
         attack_type = detect_attack(payload)
 
-        # ML: features isi attempt ko save karne SE PEHLE banane hain
+        # ML: build the features BEFORE saving this attempt
         ml = None
         try:
             features = build_features(
@@ -250,23 +250,23 @@ def honeypot_login(request):
         except Exception as e:
             print("Features error:", e)
 
-        # ML fail ho to bhi honeypot chalta rahe
+        # Keep the honeypot working even if ML fails
         if not ml:
             ml = {"label": "unknown", "confidence": 0, "risk_score": 0, "priority": "Unknown"}
 
         print("ML result:", ml)
 
-        # Keyword attack mile ya ML priority High/Critical ho -> Blocked
+        # Keyword attack found or ML priority High/Critical -> Blocked
         if attack_type != "Normal" or ml["priority"] in ("High", "Critical"):
             status = "Blocked"
         else:
             status = "Detected"
 
-        # Keyword se kuch nahi mila par ML ne baar-baar login attempts pakde -> Brute Force
+        # No keyword match, but ML caught repeated login attempts -> Brute Force
         if attack_type == "Normal" and ml["label"] in ML_LABEL_TO_TYPE:
             attack_type = ML_LABEL_TO_TYPE[ml["label"]]
 
-        # Save attack (ML result ke saath)
+        # Save the attack (with the ML result)
         Attack.objects.create(
             ip_address=ip,
             attack_type=attack_type,

@@ -15,14 +15,14 @@ url = reverse("login")
 users = ["admin", "root", "test", "user1", "guest", "oracle",
          "postgres", "ubuntu", "support", "administrator", "demo", "pi"]
 
-print("Test shuru...")
+print("Starting test...")
 
-# Test ke time Telegram alert band rakhte hain
+# Keep Telegram alerts off during the test
 with patch("honeypot_app.views.send_telegram_alert"):
     for u in users:
         r = c.post(url, {"username": u, "password": "pass123"})
         print(u, "-> status", r.status_code)
 
-print("--- Last 12 attempts (naya upar) ---")
+print("--- Last 12 attempts (newest first) ---")
 for a in Attack.objects.order_by("-time")[:12]:
     print(a.username, "|", a.ml_label, "|", a.risk_score, "|", a.priority)

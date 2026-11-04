@@ -5,16 +5,16 @@ from django.utils import timezone
 
 from .models import Attack
 
-# Office time (is se bahar ka login "suspicious time" maana jayega)
+# Office hours (a login outside this window counts as a "suspicious time")
 OFFICE_START_HOUR = 9
 OFFICE_END_HOUR = 18
 
 
 def country_code(ip):
-    """IP se country ka code (model ko 'IN', 'US' jaise codes chahiye).
+    """Country code for an IP (the model expects codes like 'IN', 'US').
 
-    Abhi sirf local/private IP ko 'IN' maanta hai. Public IP ke liye
-    'unknown' deta hai (baad mein asli GeoIP lagayenge).
+    For now only local/private IPs are treated as 'IN'. Public IPs get
+    'unknown' (a real GeoIP lookup can be added later).
     """
     try:
         addr = ipaddress.ip_address(ip)
@@ -26,10 +26,10 @@ def country_code(ip):
 
 
 def build_features(ip, username, payload, request_size=0, secure=False):
-    """Honeypot ke ek login attempt se ML model ke 14 features banata hai.
+    """Builds the 14 ML model features from one honeypot login attempt.
 
-    Ye function Attack table mein is IP ke pichhle attempts ginta hai.
-    Isse us attempt ko save karne SE PEHLE call karna hai.
+    This function counts the earlier attempts of this IP in the Attack table.
+    Call it BEFORE saving the current attempt.
     """
     now = timezone.now()
     hour = timezone.localtime(now).hour
@@ -37,7 +37,7 @@ def build_features(ip, username, payload, request_size=0, secure=False):
     last_5_min = Attack.objects.filter(ip_address=ip, time__gte=now - timedelta(minutes=5))
     last_1_min = Attack.objects.filter(ip_address=ip, time__gte=now - timedelta(minutes=1))
 
-    # +1 kyunki ye abhi wala attempt bhi ginna hai (har honeypot login fail hota hai)
+    # +1 because the current attempt must be counted too (every honeypot login fails)
     failed_logins = last_5_min.count() + 1
     requests_per_minute = float(last_1_min.count() + 1)
 

@@ -9,7 +9,7 @@ _bundle = None
 
 
 def _load():
-    """Model sirf ek baar load hota hai (pehli baar use hone par)."""
+    """The model is loaded only once, the first time it is used."""
     global _bundle
     if _bundle is None:
         _bundle = joblib.load(MODEL_PATH)
@@ -33,7 +33,7 @@ def risk_bucket(score):
 
 
 def predict_event(event):
-    """event: dict jisme 14 raw features hon. Result dict deta hai, fail hone par None."""
+    """event: dict with the 14 raw features. Returns a result dict, or None on failure."""
     try:
         b = _load()
         row = dict(event)

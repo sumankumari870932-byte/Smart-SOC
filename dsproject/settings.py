@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_env_file(path):
-    """Chhota .env reader (koi extra package nahi chahiye). .env GitHub par nahi jati."""
+    """Tiny .env reader (no extra package needed). The .env file is never committed to GitHub."""
     if not path.exists():
         return
     for line in path.read_text(encoding="utf-8").splitlines():

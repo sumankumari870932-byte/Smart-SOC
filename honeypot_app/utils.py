@@ -43,7 +43,7 @@ def send_telegram_alert(message):
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-    # Telegram set nahi hai to chupchap skip
+    # If Telegram is not configured, skip silently
     if not token or not chat_id:
         return
 

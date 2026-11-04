@@ -284,7 +284,7 @@ async function refresh(){
         terminal.scrollTop = keepScroll;
 
         dot.classList.remove("off");
-        liveText.textContent = "LIVE - updates every 1 seconds (last: " + new Date().toLocaleTimeString() + ")";
+        liveText.textContent = "LIVE - updates every second (last: " + new Date().toLocaleTimeString() + ")";
     } catch (e) {
         dot.classList.add("off");
         liveText.textContent = "Connection lost - retrying...";

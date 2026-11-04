@@ -17,7 +17,7 @@ class Attack(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='Blocked')
 
-    # --- Naye fields (AI/ML ke liye) ---
+    # --- New fields (for AI/ML) ---
     username = models.CharField(max_length=150, blank=True, default='')
     user_agent = models.CharField(max_length=300, blank=True, default='')
     ml_label = models.CharField(max_length=50, blank=True, default='')

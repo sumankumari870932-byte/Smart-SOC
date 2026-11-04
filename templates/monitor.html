@@ -228,6 +228,11 @@ margin-bottom:4px;
 font-size:13px;
 margin:2px 0;
 }
+
+/* Dark look for the OpenStreetMap tiles (markers are not affected) */
+.leaflet-tile-pane{
+filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -363,9 +368,8 @@ if (typeof L === "undefined") {
     const mapNote = document.getElementById("mapNote");
 
     const map = L.map("map", {worldCopyJump: true, minZoom: 2}).setView([20, 0], 2);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-        subdomains: "abcd",
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
         maxZoom: 19
     }).addTo(map);
 
@@ -425,7 +429,8 @@ if (typeof L === "undefined") {
                     m = L.marker([p.lat, p.lon], {icon: dotIcon}).addTo(map);
                     m.bindPopup(buildPopup(p));
                     m.on("click", () => {
-                        map.flyTo([p.lat, p.lon], Math.max(map.getZoom(), 5), {duration: 1.2});
+                        map.flyTo([p.lat, p.lon], 10, {duration: 1.5});
+                        map.once("moveend", () => m.openPopup());
                     });
                     markers[p.ip] = m;
                 } else {

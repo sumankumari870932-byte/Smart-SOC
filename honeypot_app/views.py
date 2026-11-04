@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404, JsonResponse
 from django.db.models import Count, Q
 from .models import Attack, Attacker, Setting
@@ -246,6 +247,7 @@ def analysis_view(request):
 
     return render(request, 'analysis.html', context)
 
+@staff_member_required
 def settings_view(request):
     setting, created = Setting.objects.get_or_create(id=1)
 
@@ -275,6 +277,9 @@ def honeypot_login(request):
 
         ip = get_client_ip(request)
         attack_type = detect_attack(payload)
+        # Public site: never keep or show a visitor's password in plain text.
+        # Inputs that look like attacks are stored as they are.
+        stored_payload = payload if attack_type != "Normal" else f"{username} {'*' * min(len(password), 12)}"
 
         # ML: build the features BEFORE saving this attempt
         ml = None
@@ -310,7 +315,7 @@ def honeypot_login(request):
         Attack.objects.create(
             ip_address=ip,
             attack_type=attack_type,
-            payload=payload,
+            payload=stored_payload,
             target="Login Form",
             status=status,
             username=username[:150],
@@ -329,7 +334,7 @@ def honeypot_login(request):
 
 IP: {ip}
 Type: {attack_type}
-Payload: {payload}
+Payload: {stored_payload}
 Target: Login Form
 
 🤖 ML Label: {ml['label']}

@@ -44,7 +44,7 @@ def dashboard(request):
     attacks = Attack.objects.order_by('-time')[:5]
 
     total_attacks = Attack.objects.count()
-    today = now().date()
+    today = localtime(now()).date()
     today_attacks = Attack.objects.filter(time__date=today).count()
     sql_count = Attack.objects.filter(attack_type='SQL Injection').count()
     brute_count = Attack.objects.filter(attack_type='Brute Force').count()
@@ -76,7 +76,7 @@ def attack_list(request, category):
         title = 'Total Attacks'
     elif category == 'today':
         title = "Today's Attacks"
-        attacks = attacks.filter(time__date=now().date())
+        attacks = attacks.filter(time__date=localtime(now()).date())
     elif category == 'sql':
         title = 'SQL Injection'
         attacks = attacks.filter(attack_type='SQL Injection')

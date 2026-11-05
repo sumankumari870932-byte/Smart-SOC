@@ -406,6 +406,24 @@ if (typeof L === "undefined") {
 
     const markers = {};      // ip -> marker
     let firstFit = true;
+
+    /* Dashed circle = the area the IP location could really be in (about 100 km) */
+    let areaCircle = null;
+    map.on("popupopen", e => {
+        if (areaCircle) { map.removeLayer(areaCircle); }
+        areaCircle = L.circle(e.popup.getLatLng(), {
+            radius: 100000,
+            color: "#ef4444",
+            weight: 1,
+            dashArray: "6 6",
+            fillColor: "#ef4444",
+            fillOpacity: 0.08,
+            interactive: false
+        }).addTo(map);
+    });
+    map.on("popupclose", () => {
+        if (areaCircle) { map.removeLayer(areaCircle); areaCircle = null; }
+    });
     let selectedIp = "";          // "" means all attackers
     let lastPoints = [];
     let pickerKey = "";
@@ -443,10 +461,11 @@ if (typeof L === "undefined") {
         addLine(box, "Last attack", p.last_type + " (" + p.last_time + ")");
         addLine(box, "ML / Risk", (p.ml_label || "-") + " / " + p.risk + " (" + (p.priority || "Unknown") + ")");
         addLine(box, "Status", p.status);
+        addLine(box, "Accuracy", "Approximate area only (up to about 100 km)");
 
         const small = document.createElement("p");
         small.style.color = "#64748b";
-        small.textContent = "Approximate location from the IP (behind a VPN or proxy, the VPN location is shown).";
+        small.textContent = "The dashed circle shows the possible area. IP locations are approximate (city or region level, mobile networks can be 100+ km off). Behind a VPN or proxy, the VPN location is shown.";
         box.appendChild(small);
         return box;
     }

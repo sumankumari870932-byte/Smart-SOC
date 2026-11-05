@@ -256,6 +256,25 @@ font-size:14px;
 min-width:260px;
 max-width:100%;
 }
+
+/* DETAILS POPUP: beside the red dot instead of above it */
+.leaflet-popup-content .pop p{
+margin:2px 0;
+line-height:1.35;
+}
+
+.leaflet-popup.side-right .leaflet-popup-tip-container,
+.leaflet-popup.side-left .leaflet-popup-tip-container{
+display:none;
+}
+
+.leaflet-popup.side-right .leaflet-popup-content-wrapper{
+transform:translate(calc(50% + 26px), calc(50% + 24px));
+}
+
+.leaflet-popup.side-left .leaflet-popup-content-wrapper{
+transform:translate(calc(-50% - 26px), calc(50% + 24px));
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -407,22 +426,62 @@ if (typeof L === "undefined") {
     const markers = {};      // ip -> marker
     let firstFit = true;
 
-    /* Dashed circle = the area the IP location could really be in (about 100 km) */
-    let areaCircle = null;
+    /* Dashed circle = the area the IP location could really be in (about 100 km).
+       Each attacker keeps its circle all the time. When zoomed far out, the circle never
+       gets smaller than a small ring, so it stays visible from above. */
+    const circles = {};   // ip -> circle
+    const AREA_METERS = 100000;
+    const MIN_RING_PIXELS = 22;
+
+    function syncCircles() {
+        const zoom = map.getZoom();
+
+        Object.keys(circles).forEach(ip => {
+            if (!markers[ip]) {
+                map.removeLayer(circles[ip]);
+                delete circles[ip];
+            }
+        });
+
+        Object.keys(markers).forEach(ip => {
+            const m = markers[ip];
+            const ll = m.getLatLng();
+
+            let c = circles[ip];
+            if (!c) {
+                c = L.circle(ll, {
+                    radius: AREA_METERS,
+                    color: "#ef4444",
+                    weight: 1.5,
+                    dashArray: "6 6",
+                    fillColor: "#ef4444",
+                    fillOpacity: 0.08,
+                    interactive: false
+                });
+                circles[ip] = c;
+            }
+
+            const metersPerPixel = 40075016.686 * Math.cos(ll.lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+            c.setRadius(Math.max(AREA_METERS, metersPerPixel * MIN_RING_PIXELS));
+
+            const visible = map.hasLayer(m);
+            if (visible && !map.hasLayer(c)) { c.addTo(map); }
+            if (!visible && map.hasLayer(c)) { map.removeLayer(c); }
+        });
+    }
+
+    map.on("zoomend", syncCircles);
+
+    /* Put the details popup beside the dot (right side, or left near the right edge) */
     map.on("popupopen", e => {
-        if (areaCircle) { map.removeLayer(areaCircle); }
-        areaCircle = L.circle(e.popup.getLatLng(), {
-            radius: 100000,
-            color: "#ef4444",
-            weight: 1,
-            dashArray: "6 6",
-            fillColor: "#ef4444",
-            fillOpacity: 0.08,
-            interactive: false
-        }).addTo(map);
-    });
-    map.on("popupclose", () => {
-        if (areaCircle) { map.removeLayer(areaCircle); areaCircle = null; }
+        const el = e.popup.getElement();
+        if (!el) { return; }
+        el.classList.remove("side-right", "side-left");
+        const size = map.getSize();
+        if (size.x >= 800) {
+            const x = map.latLngToContainerPoint(e.popup.getLatLng()).x;
+            el.classList.add(x > size.x - 480 ? "side-left" : "side-right");
+        }
     });
     let selectedIp = "";          // "" means all attackers
     let lastPoints = [];
@@ -503,6 +562,8 @@ if (typeof L === "undefined") {
             if (!show && map.hasLayer(markers[ip])) { map.removeLayer(markers[ip]); }
         });
 
+        syncCircles();
+
         if (!fly) { return; }
 
         if (selectedIp && markers[selectedIp]) {
@@ -534,7 +595,7 @@ if (typeof L === "undefined") {
                 let m = markers[p.ip];
                 if (!m) {
                     m = L.marker([p.lat, p.lon], {icon: dotIcon}).addTo(map);
-                    m.bindPopup(buildPopup(p));
+                    m.bindPopup(buildPopup(p), {autoPan: map.getSize().x < 800, maxWidth: 320});
                     m.on("click", () => {
                         map.flyTo([p.lat, p.lon], 10, {duration: 1.5});
                         map.once("moveend", () => m.openPopup());

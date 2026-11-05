@@ -233,6 +233,29 @@ margin:2px 0;
 .leaflet-tile-pane{
 filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }
+
+/* ATTACKER PICKER (above the map) */
+.map-picker{
+display:flex;
+align-items:center;
+gap:10px;
+margin-bottom:10px;
+flex-wrap:wrap;
+}
+
+.map-picker label{
+font-weight:600;
+}
+
+.map-picker select{
+padding:8px 12px;
+border:1px solid #cbd5e1;
+border-radius:8px;
+background:#ffffff;
+font-size:14px;
+min-width:260px;
+max-width:100%;
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -269,6 +292,12 @@ filter:invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 
 <div class="map-card">
 <h2>Attacker Locations (live)</h2>
+<div class="map-picker">
+<label for="attackerSelect">Attacker:</label>
+<select id="attackerSelect">
+<option value="">All attackers</option>
+</select>
+</div>
 <div id="map"></div>
 <p class="map-note" id="mapNote">Loading map...</p>
 </div>
@@ -377,6 +406,10 @@ if (typeof L === "undefined") {
 
     const markers = {};      // ip -> marker
     let firstFit = true;
+    let selectedIp = "";          // "" means all attackers
+    let lastPoints = [];
+    let pickerKey = "";
+    const picker = document.getElementById("attackerSelect");
 
     const dotIcon = L.divIcon({
         className: "",
@@ -418,6 +451,59 @@ if (typeof L === "undefined") {
         return box;
     }
 
+    function placeText(p) {
+        return [p.city, p.region, p.country].filter(Boolean).join(", ");
+    }
+
+    function selectedText() {
+        const p = lastPoints.find(x => x.ip === selectedIp);
+        return p ? ("Showing " + p.ip + ": " + (placeText(p) || "Unknown location")) : ("Showing " + selectedIp);
+    }
+
+    /* Rebuild the dropdown only when the list of attacker IPs changes */
+    function updatePicker(points) {
+        const key = points.map(p => p.ip).join(",");
+        if (key === pickerKey) { return; }
+        pickerKey = key;
+
+        picker.replaceChildren(new Option("All attackers", ""));
+        points.forEach(p => {
+            const label = p.ip + " (" + (placeText(p) || "Unknown") + ", " + p.count + " attacks)";
+            picker.appendChild(new Option(label, p.ip));
+        });
+
+        if (selectedIp && !points.some(p => p.ip === selectedIp)) { selectedIp = ""; }
+        picker.value = selectedIp;
+    }
+
+    /* Show only the chosen attacker (or everyone). fly=true moves the map. */
+    function applySelection(fly) {
+        Object.keys(markers).forEach(ip => {
+            const show = !selectedIp || ip === selectedIp;
+            if (show && !map.hasLayer(markers[ip])) { markers[ip].addTo(map); }
+            if (!show && map.hasLayer(markers[ip])) { map.removeLayer(markers[ip]); }
+        });
+
+        if (!fly) { return; }
+
+        if (selectedIp && markers[selectedIp]) {
+            const m = markers[selectedIp];
+            map.flyTo(m.getLatLng(), 10, {duration: 1.5});
+            map.once("moveend", () => m.openPopup());
+        } else if (lastPoints.length > 0) {
+            map.closePopup();
+            map.fitBounds(lastPoints.map(q => [q.lat, q.lon]), {maxZoom: 4, padding: [40, 40]});
+        } else {
+            map.setView([20, 0], 2);
+        }
+    }
+
+    picker.addEventListener("change", () => {
+        selectedIp = picker.value;
+        mapNote.textContent = selectedIp ? selectedText() : "Showing all attackers.";
+        applySelection(true);
+    });
+
     async function refreshMap() {
         try {
             const res = await fetch(GEO_URL, {cache: "no-store"});
@@ -448,7 +534,11 @@ if (typeof L === "undefined") {
                 }
             });
 
-            if (firstFit && data.points.length > 0) {
+            lastPoints = data.points;
+            updatePicker(data.points);
+            applySelection(false);
+
+            if (firstFit && !selectedIp && data.points.length > 0) {
                 map.fitBounds(data.points.map(p => [p.lat, p.lon]), {maxZoom: 4, padding: [40, 40]});
                 firstFit = false;
             }
@@ -462,7 +552,7 @@ if (typeof L === "undefined") {
             if (data.local_ips.length > 0) {
                 note += " Local/private IPs (cannot be placed on a map): " + data.local_ips.join(", ");
             }
-            mapNote.textContent = note;
+            mapNote.textContent = selectedIp ? selectedText() : note;
         } catch (e) {
             mapNote.textContent = "Could not load map data, retrying...";
         }

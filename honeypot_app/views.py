@@ -159,25 +159,26 @@ def monitor_data(request):
 
 
 def monitor_geo(request):
-    # For the map: recent attacker IPs and their approximate location
-    recent = Attack.objects.order_by('-time')[:200]
+    # For the map: ALL attacker IPs (not only recent ones) with saved locations
+    from django.db.models import Count, Max
+    from .geo import bulk_cached
+
+    rows = (Attack.objects.values('ip_address')
+            .annotate(total=Count('id'), last=Max('time'))
+            .order_by('-last')[:500])
 
     by_ip = {}
-    for a in recent:  # newest first
-        info = by_ip.get(a.ip_address)
-        if info is None:
-            by_ip[a.ip_address] = {
-                'ip': a.ip_address,
-                'count': 1,
-                'last_type': a.attack_type,
-                'ml_label': a.ml_label,
-                'priority': a.priority,
-                'risk': round(a.risk_score, 1),
-                'status': a.status,
-                'last_time': localtime(a.time).strftime('%d %b %Y, %H:%M:%S'),
-            }
-        else:
-            info['count'] += 1
+    for r in rows:
+        by_ip[r['ip_address']] = {'ip': r['ip_address'], 'count': r['total'], 'last': r['last']}
+
+    # details of the newest attack of each IP
+    newest = {}
+    for a in Attack.objects.filter(ip_address__in=list(by_ip)).order_by('-time')[:3000]:
+        if a.ip_address not in newest:
+            newest[a.ip_address] = a
+
+    public_ips = [ip for ip in by_ip if is_public_ip(ip)]
+    cached = bulk_cached(public_ips)
 
     points = []
     local_ips = []
@@ -187,12 +188,26 @@ def monitor_geo(request):
         if not is_public_ip(ip):
             local_ips.append(ip)
             continue
-        geo, fetched = lookup_ip(ip, allow_fetch=fetch_budget > 0)
-        if fetched:
-            fetch_budget -= 1
-        if geo:
-            info.update(geo)
-            points.append(info)
+        geo = cached.get(ip)
+        if geo is None and fetch_budget > 0:
+            geo, fetched = lookup_ip(ip, allow_fetch=True)
+            if fetched:
+                fetch_budget -= 1
+        if not geo:
+            continue
+        a = newest.get(ip)
+        item = {
+            'ip': ip,
+            'count': info['count'],
+            'last_type': a.attack_type if a else '',
+            'ml_label': a.ml_label if a else '',
+            'priority': a.priority if a else '',
+            'risk': round(a.risk_score, 1) if a else 0,
+            'status': a.status if a else '',
+            'last_time': localtime(info['last']).strftime('%d %b %Y, %H:%M:%S'),
+        }
+        item.update(geo)
+        points.append(item)
 
     return JsonResponse({'points': points, 'local_ips': local_ips})
 

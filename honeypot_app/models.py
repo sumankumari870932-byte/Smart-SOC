@@ -28,6 +28,17 @@ class Attack(models.Model):
     def __str__(self):
         return f"{self.ip_address} - {self.attack_type}"
 
+    @property
+    def public_payload(self):
+        # What visitors may see: attack strings as they are, credentials masked.
+        # Logged-in admins see self.payload directly.
+        if self.attack_type in ("SQL Injection", "XSS", "Command Injection", "Directory Traversal"):
+            return self.payload
+        parts = (self.payload or "").rsplit(" ", 1)
+        if len(parts) == 2 and parts[1] and set(parts[1]) != {"*"}:
+            return parts[0] + " " + "*" * min(len(parts[1]), 12)
+        return self.payload
+
 class Attacker(models.Model):
     ip_address = models.CharField(max_length=100, unique=True)
     country = models.CharField(max_length=100, default='Unknown')

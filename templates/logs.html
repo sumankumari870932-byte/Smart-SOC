@@ -234,7 +234,7 @@ transform:translateY(25px);
 <tr>
 <td>{{ attack.ip_address }}</td>
 <td>{{ attack.attack_type }}</td>
-<td>{{ attack.payload }}</td>
+<td>{% if user.is_staff %}{{ attack.payload }}{% else %}{{ attack.public_payload }}{% endif %}</td>
 <td>{{ attack.time|date:"d M Y, h:i A" }}</td>
 
 <td class="{% if attack.status == 'Blocked' %}danger{% else %}normal{% endif %}">

@@ -149,7 +149,7 @@ def monitor_data(request):
         'time': localtime(a.time).strftime('%H:%M:%S'),
         'ip': a.ip_address,
         'attack_type': a.attack_type,
-        'payload': a.payload,
+        'payload': a.payload if request.user.is_staff else a.public_payload,
         'ml_label': a.ml_label,
         'risk': round(a.risk_score, 1),
         'priority': a.priority,
@@ -294,7 +294,7 @@ def honeypot_login(request):
         attack_type = detect_attack(payload)
         # Public site: never keep or show a visitor's password in plain text.
         # Inputs that look like attacks are stored as they are.
-        stored_payload = payload if attack_type != "Normal" else f"{username} {'*' * min(len(password), 12)}"
+        stored_payload = payload if attack_type in ("SQL Injection", "XSS", "Command Injection", "Directory Traversal") else f"{username} {'*' * min(len(password), 12)}"
 
         # ML: build the features BEFORE saving this attempt
         ml = None
@@ -317,7 +317,7 @@ def honeypot_login(request):
         print("ML result:", ml)
 
         # Keyword attack found or ML priority High/Critical -> Blocked
-        if attack_type != "Normal" or ml["priority"] in ("High", "Critical"):
+        if attack_type not in ("Normal", "Brute Force") or ml["priority"] in ("High", "Critical"):
             status = "Blocked"
         else:
             status = "Detected"

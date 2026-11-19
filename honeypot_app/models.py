@@ -30,14 +30,20 @@ class Attack(models.Model):
 
     @property
     def public_payload(self):
-        # What visitors may see: attack strings as they are, credentials masked.
-        # Logged-in admins see self.payload directly.
-        if self.attack_type in ("SQL Injection", "XSS", "Command Injection", "Directory Traversal"):
-            return self.payload
-        parts = (self.payload or "").rsplit(" ", 1)
-        if len(parts) == 2 and parts[1] and set(parts[1]) != {"*"}:
-            return parts[0] + " " + "*" * min(len(parts[1]), 12)
-        return self.payload
+        # What visitors may see: the username and a masked password, for every
+        # attack type. Logged-in admins see self.payload directly.
+        payload = self.payload or ""
+        user = getattr(self, "username", "") or ""
+        if user and payload.startswith(user + " "):
+            password = payload[len(user) + 1:]
+        else:
+            parts = payload.rsplit(" ", 1)
+            if len(parts) != 2:
+                return payload
+            user, password = parts
+        if not password or set(password) == {"*"}:
+            return payload
+        return user + " " + "*" * min(len(password), 12)
 
 class Attacker(models.Model):
     ip_address = models.CharField(max_length=100, unique=True)
